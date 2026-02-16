@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Chat UI</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/9.0.6/signalr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+
+    <script>
+        $(document).ready(() => {
+
+            const connection = new signalR.HubConnectionBuilder()
+                                          .withUrl("https://localhost:7111/chathub")
+                                          .build();
+
+            connection.start()
+                .then(() => {
+                    console.log("SignalR connected");
+                })
+                .catch(err => console.log(err));
+
+            $(".disabled").attr("disabled", "disabled");
+
+            $("body").on("click", ".users", function () {
+                $(".users").each((index, item) =>{
+                    item.classList.remove("active")
+                })
+                $(this).addClass("active");
+            });
+
+            $("#btnGonder").click(() => {
+                var x = $(".message").first().clone(); // İlk template'i clone'la
+                x.css("display", "block"); // Görünür yap
+                x.removeClass("message");
+                x.find("h5")[1].innerHTML = ""; 
+                x.find("h5")[0].innerHTML = "Siz"; // Örnek dolgu
+                
+                // var msgText = $("textarea").val();
+                // if(msgText.trim() != "") {
+                //     x.find("p").text(msgText);
+                //     $(".messages").append(x);
+                //     $("textarea").val("");
+                //     // Otomatik scroll
+                //     $(".messages").scrollTop($(".messages")[0].scrollHeight);
+                // }
+            });
+
+            $("#btnLogin").click(() => {
+                const nickName = $("#txtNickName").val();
+                connection.invoke("GetNickName", nickName).catch(error => console.log(error));
+                $(".disabled")
+                    .removeAttr("disabled")
+                    .removeClass("disabled");
+            });
+
+            connection.on("clientJoined", nickName =>{
+                 $("#clientStatusMessage").html(`${nickName} giriş yaptı.`);
+                 $("#clientStatusMessage").fadeIn(2000, () => {
+                    setTimeout(() => {
+                        $("#clientStatusMessage").fadeOut(2000);
+                    }, 2000);
+                 });
+            });
+
+            connection.on("clients", clients =>{
+                $("#_clients").html("");
+                $.each(clients, (index, item) =>{
+                    const user = $(".users").first().clone();
+                    user.removeClass("active");
+                    user.html(item.nickName);
+                    $("#_clients").append(user);
+                });
+            });
+
+            connection.on("receiveMessage", (message, nickName) =>{
+                const _message = $(".message.template").clone();
+                _message.removeClass("template");
+                _message.find("p").html(message);
+                _message.find("h5").eq(0).html(nickName);
+                $(".messages").append(_message)
+            })
+
+            $("#btnSend").click(() =>{
+
+                const clientName = $(".users.active").first().html();
+                const message = $("#txtMessage").val();
+                connection.invoke("SendMessageAsync", message, clientName);
+
+                const _message = $(".message.template").clone();
+                _message.removeClass("template");
+                _message.find("p").html(message);
+                _message.find("p").css("text-align", "right");
+                _message.find("h5").eq(1).html("Sen");
+                $(".messages").append(_message)
+            });
+
+
+            let _groupName = "";
+            $("#btnGroupSend").click(() => {
+                const message = $("#txtMessage").val();
+                if(_groupName != ""){
+                    connection.invoke("SendMessageToGroupAsync", _groupName, message);
+
+                const _message = $(".message.template").clone();
+                _message.removeClass("template");
+                _message.find("p").html(message);
+                _message.find("p").css("text-align", "right");
+                _message.find("h5").eq(1).html("Sen");
+                $(".messages").append(_message)
+                }
+            })
+
+            $("#btnCreateRoom").click(() => {
+                connection.invoke("AddGroup", $("#txtCreateRoom").val());
+            });
+
+            connection.on("groups", groups => {
+            $(".rooms").html("");
+            let options = `<option selected value="-1">Genel Sohbet</option>`;
+            $.each(groups, (index, item) =>{
+                options += `<option value="${item.groupName}">${item.groupName}</option>`
+            });
+            $(".rooms").append(options);
+            })
+
+            $("#btnAddRooms").click(() =>{
+                let groupNames = [];
+                $(".rooms option:selected").map((i, e) =>{
+                    groupNames.push(e.innerHTML);
+                })
+                connection.invoke("AddClientToGroup", groupNames)
+            });
+
+            $(".rooms").change(function () {
+                let groupName = $(this).val();
+                _groupName = groupName[0];
+                connection.invoke("GetClientToGroup", groupName[0]);
+            })
+
+            
+
+        });
+    </script>
+</head>
+<body>
+    
+<div class="container">
+    <div class="row container-main mx-auto">
+
+        <div class="col-md-3 border-end">
+            <div class="sidebar-section">
+                <h6 class="text-muted mb-3">Odalar</h6>
+                <input class="form-control disabled" type="text" placeholder="Oda adı" id="txtCreateRoom">
+
+                <button type="button" class="btn btn-outline-info btn-sm rightButton disabled" id="btnCreateRoom">
+                    + Oda Oluştur
+                </button>
+
+                <select size="4" class="form-select mt-3 disabled rooms" multiple>
+                    <option selected value="-1">Genel Sohbet</option>
+                </select>
+
+                <button type="button" class="btn btn-primary btn-sm rightButton disabled" id="btnAddRooms">
+                    Odaya Gir
+                </button>
+
+                <hr>
+
+                <h6 class="text-muted mb-3">Kullanıcılar</h6>
+                <div class="list-group list-group-flush shadow-sm rounded clients">
+                    <a class="list-group-item list-group-item-action users active">
+                        Tümü
+                    </a>
+                    <div id="_clients">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 px-4">
+            <div class="d-flex flex-column h-100">
+                <h5 class="mb-3 text-primary">Sohbet Ekranı</h5>
+                
+                <!-- Mesaj -->
+                <div class="list-group messages">
+                    <a class="list-group-item list-group-item-action message template">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1 fw-bold" style="font-size: 0.9rem;"></h5>
+                            <h5 class="mb-1 text-primary fw-bold" style="font-size: 0.9rem;"></h5>
+                        </div>
+                        <p class="mb-1 small text-muted"></p>
+                        <!-- <small class="text-black-50">az önce</small> -->
+                    </a>
+                </div>
+
+                <div class="mt-auto">
+                    <!-- // Mesajlaşma -->
+                    <textarea class="form-control border-primary-subtle"
+                              placeholder="Mesajınızı buraya yazın..."
+                              rows="2" id="txtMessage"></textarea>
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-primary mt-2" id="btnSend">
+                            Gönder
+                        </button>
+                        <button type="button" class="btn btn-primary mt-2" id="btnGroupSend">
+                            Gruba Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 border-start">
+            <div class="sidebar-section">
+                <h6 class="text-muted mb-3">Profil</h6>
+                <div class="text-center mb-3">
+                    <div class="bg-secondary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                        ?
+                    </div>
+                </div>
+                <input class="form-control" type="text" placeholder="Takma adınız" id="txtNickName">
+                <button type="button" class="btn btn-success leftButton" id="btnLogin">
+                    Sisteme Giriş Yap
+                </button>
+                
+                <div class="mt-4 small text-muted p-2 bg-warning-subtle rounded">
+                    <strong>Bilgi:</strong> Mesaj göndermek için önce giriş yapmalısınız.
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="alert alert-success" style="width: 50%; display: none; justify-content: center; margin: 10px auto;" id="clientStatusMessage">
+        
+    </div>
+</div>
+
+</body>
+</html>
