@@ -34,7 +34,7 @@ Uygulama, Client-Server modelini takip eder ve kod organizasyonu için şu yapı
 
 1.  **Projeyi Clone'layın:**
     ```bash
-    git clone [https://github.com/burakonkn/SignalR-Chat-App.git](https://github.com/burakonkn/SignalR-Chat-App.git)
+    git clone https://github.com/burakonkn/SignalR-Chat-App.git
     ```
 2.  **Backend'i Başlatın:** `SignalRChatServerExample.sln` dosyasını Visual Studio veya JetBrains Rider ile açıp çalıştırın. (Varsayılan: `https://localhost:7111`)
 3.  **Frontend'i Açın:** `chat.html` dosyasını herhangi bir modern tarayıcıda açın.
