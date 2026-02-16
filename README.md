@@ -23,7 +23,7 @@ Bu proje, **.NET Core SignalR** teknolojisi kullanılarak geliştirilmiş, web t
 Uygulama, Client-Server modelini takip eder ve kod organizasyonu için şu yapı kullanılmıştır:
 
 * **SignalRChatServerExample:** Hub yönetimi ve Business Logic'in bulunduğu backend projesi.
-* **SignalRChatClientExample:** HTML, CSS ve JavaScript dosyalarından oluşan istemci tarafı.
+* **SignalRClientExample:** HTML, CSS ve JavaScript dosyalarından oluşan istemci tarafı.
 
 ### Önemli Metotlar:
 - **`GetNickName`**: Kullanıcıyı sisteme dahil eder ve diğer aktif kullanıcılara bildirir.
